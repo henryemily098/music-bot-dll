@@ -58,6 +58,7 @@ module.exports.end = async(client, guildId) => {
     if(!queue) return;
 
     queue.skipVotes = [];
+    queue.prevVotes = [];
     try {
         if(queue.message) await queue.message.delete();
         queue.message = null;
@@ -65,7 +66,10 @@ module.exports.end = async(client, guildId) => {
         console.log(error);
     }
 
-    let lastSong = queue.songs.deleteFirst();
-    if(queue.loop) queue.songs.insert(lastSong);
-    await this.play(queue.songs.getFirst(), client, guildId);
+    if(!queue.currentSong) queue.currentSong = queue.songs.first;
+    else {
+        queue.currentSong = queue.currentSong.next;
+        if(!queue.currentSong && queue.loop) queue.currentSong = queue.songs.first;
+    }
+    await this.play(queue.currentSong?.info, client, guildId);
 }

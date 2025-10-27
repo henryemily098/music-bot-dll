@@ -125,10 +125,12 @@ module.exports.run = async(interaction) => {
 
     let serverQueue = interaction.client.queue.get(interaction.guildId);
     let queueConstruct = {
+        currentSong: null,
         dj: interaction.user,
         loop: false,
         message: null,
         playing: true,
+        prevVotes: [],
         skipVotes: [],
         songs: new DLL(),
         volume: 100
@@ -145,7 +147,8 @@ module.exports.run = async(interaction) => {
                 let queue = interaction.client.queue.get(interaction.guildId);
                 if(queue) queue.playing = false;
             })
-            .on(AudioPlayerStatus.Idle, () => end(interaction.client, interaction.guildId));
+            .on(AudioPlayerStatus.Idle, () => end(interaction.client, interaction.guildId))
+            .on("error", () => end(interaction.client, interaction.guildId));
         interaction.client.players.set(interaction.guildId, player);
     }
 
@@ -173,6 +176,7 @@ module.exports.run = async(interaction) => {
         console.log(error);
     }
 
+    queueConstruct.currentSong = queueConstruct.songs.first;
     if(!serverQueue) interaction.client.queue.set(interaction.guildId, queueConstruct);
     if(!serverQueue) {
         try {
@@ -182,7 +186,7 @@ module.exports.run = async(interaction) => {
                     channelId: channel.id,
                     guildId: interaction.guildId
                 })
-                .on(VoiceConnectionStatus.Destroyed, () => end(interaction.client, interaction.guildId))
+                .on(VoiceConnectionStatus.Destroyed, () => end(interaction.client, interaction.guildId));
                 await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
                 connection.subscribe(player);
             }
