@@ -54,6 +54,26 @@ client.commands = new Collection();
 client.players = new Collection();
 client.queue = new Collection();
 
+/**
+ * 
+ * @param {import("discord.js").User} user 
+ * @returns 
+ */
+client.createQueueConstruct = (user) => {
+    return {
+        currentSong: null,
+        direction: 1,
+        dj: user,
+        loop: false,
+        message: null,
+        playing: true,
+        prevVotes: [],
+        skipVotes: [],
+        songs: new DLL(),
+        volume: 100
+    };
+}
+
 const folders = fs.readdirSync("./commands").filter(folder => !folder.includes("."));
 for(let i = 0; i < folders.length; i++) {
     let config = require(`./commands/${folders[i]}.json`);
@@ -169,11 +189,14 @@ client.on(Events.InteractionCreate, async(interaction) => {
 
             let list = queue.songs.toArray();
             let content = "```\n";
-            content += `FIRST 5 TRACKS TO BE PLAYED IN ${interaction.guild.name}'s QUEUE\n\n`;
+            content += `DISPLAY 5 TRACKS TO BE PLAYED IN "${interaction.guild.name.toUpperCase()}" QUEUE\n\n`;
             content += `Total tracks: ${queue.songs.length}\n`;
             content += `Current DJ: ${queue.dj ? `${queue.dj.username}` : "None"}\n`;
             content += `Current Song: ${queue.currentSong ? queue.currentSong.info.title : "Unknown"}\n\n`;
-            content += list.splice(viewQueue.start, 5).map((song, index) => `${viewQueue.start+index+1}). ${song.title} - [${song.requestedBy.username}]`).join("\n") + "\n\n";
+            content += list.splice(0, 5).map((song, index) => {
+                if(queue.currentSong && queue.currentSong.info === song) return `${viewQueue.start+index+1}). ${song.title} - [${song.requestedBy.username}] ⬅️`;
+                else return `${viewQueue.star+index+1}). ${song.title} - [${song.requestedBy.username}]`;
+            }).join("\n") + "\n\n";
             content += `Page: ${viewQueue.end/5}/${Math.ceil(queue.songs.length / 5)}\n`;
             content += "```";
             try {
@@ -235,18 +258,8 @@ client.on(Events.InteractionCreate, async(interaction) => {
             }
 
             let option = parseInt(interaction.values[0]);
-            let serverQueue = interaction.client.queue.get(interaction.guildId);
-            let queueConstruct = {
-                currentSong: null,
-                dj: interaction.user,
-                loop: false,
-                message: null,
-                playing: true,
-                prevVotes: [],
-                skipVotes: [],
-                songs: new DLL(),
-                volume: 100,
-            }
+            let serverQueue = client.queue.get(interaction.guildId);
+            let queueConstruct = client.createQueueConstruct(interaction.user);
 
             let player = interaction.client.players.get(interaction.guildId);
             if(!player) {
@@ -267,8 +280,8 @@ client.on(Events.InteractionCreate, async(interaction) => {
             songs[option].requestedBy = interaction.user;
             songs[option].textChannel = interaction.channel;
             
-            if(serverQueue) serverQueue.songs.insert(songs[option]);
-            else queueConstruct.songs.insert(songs[option]);
+            if(serverQueue) serverQueue.songs.insertLast(songs[option]);
+            else queueConstruct.songs.insertLast(songs[option]);
 
             try {
                 let embed = new EmbedBuilder()
@@ -333,8 +346,8 @@ client.on(Events.VoiceStateUpdate, (oldState, newState) => {
             let members = channel.members.filter(filter);
             if(oldState.channelId === channel.id && queue.dj.id === oldState.member.id) {
                 queue.dj = members.size ? members.random().user : null;
-                queue.prevVotes.splice(queue.indexOf(oldState.member.id), 1);
-                queue.skipVotes.splice(queue.indexOf(oldState.member.id), 1);
+                queue.prevVotes.splice(queue.prevVotes.indexOf(oldState.member.id), 1);
+                queue.skipVotes.splice(queue.skipVotes.indexOf(oldState.member.id), 1);
                 if(queue.skipVotes.length === members.size || queue.prevVotes.length === members.size) player.stop();
             }
             else if(newState.channelId === channel.id && members.size <= 1) queue.dj = queue.dj || newState.member.user;

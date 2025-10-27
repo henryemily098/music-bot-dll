@@ -68,8 +68,8 @@ module.exports.end = async(client, guildId) => {
 
     if(!queue.currentSong) queue.currentSong = queue.songs.first;
     else {
-        queue.currentSong = queue.currentSong.next;
-        if(!queue.currentSong && queue.loop) queue.currentSong = queue.songs.first;
+        queue.currentSong = queue.direction ? queue.currentSong.next : queue.currentSong.prev;
+        if(!queue.currentSong && queue.loop) queue.currentSong = queue.direction ? queue.songs.first : queue.songs.last;
     }
     await this.play(queue.currentSong?.info, client, guildId);
 }

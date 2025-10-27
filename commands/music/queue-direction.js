@@ -8,17 +8,16 @@ const {
 
 /**
  * 
- * @param {import('discord.js').CommandInteraction} interaction 
+ * @param {import("discord.js").CommandInteraction} interaction 
  */
 module.exports.run = async(interaction) => {
     let { channel } = interaction.member.voice;
     let connection = getVoiceConnection(interaction.guildId);
     let queue = interaction.client.queue.get(interaction.guildId);
-
     if(!queue) {
         try {
             await interaction.reply({
-                content: "There's no queue in the server.",
+                content: "There's no queue in the server!",
                 flags: MessageFlags.Ephemeral
             });
         } catch (error) {
@@ -27,7 +26,7 @@ module.exports.run = async(interaction) => {
         return;
     }
 
-    if(!channel || connection.joinConfig.channelId != channel.id) {
+    if(!channel || channel.id != connection.joinConfig.channelId) {
         try {
             await interaction.reply({
                 content: `You have to join <#${connection.joinConfig.channelId}> first!`,
@@ -39,24 +38,13 @@ module.exports.run = async(interaction) => {
         return;
     }
 
-    let number = interaction.options.getInteger("queue-number", true);
-    if(number < 1 || number > queue.songs.length) {
-        try {
-            await interaction.reply({
-                content: `You can only input ${queue.songs.length > 1 ? `number between 1 to ${queue.songs.length}` : "number 1"}.`,
-                flags: MessageFlags.Ephemeral
-            });
-        } catch (error) {
-            console.log(error);
-        }
-        return;
-    }
+    let direction = interaction.options.getInteger("direction", true);
+    queue.direction = direction;
 
-    let removedSong = queue.songs.deleteByIndex(number-1);
+    let embed = new EmbedBuilder()
+        .setColor("Blue")
+        .setDescription(`Change queue move's direction to: **${queue.direction ? "Forward" : "Backward"}**`);
     try {
-        let embed = new EmbedBuilder()
-            .setColor("Blue")
-            .setDescription(`Removed [${removedSong.title}](${removedSong.permalink_url}) from queue`);
         await interaction.reply({
             embeds: [embed]
         });
@@ -66,14 +54,24 @@ module.exports.run = async(interaction) => {
 }
 
 module.exports.data = {
-    name: "remove",
-    description: "Remove a song from queue.",
+    name: "queue-direction",
+    description: "Choose which direction will queue move.",
     options: [
         {
-            name: "queue-number",
-            description: "Select a song with the number.",
+            name: "direction",
+            description: "Forward or backward",
             type: 4,
-            required: true
+            required: true,
+            choices: [
+                {
+                    name: "Forward",
+                    value: 1
+                },
+                {
+                    name: "Backward",
+                    value: 0
+                }
+            ]
         }
     ]
 }

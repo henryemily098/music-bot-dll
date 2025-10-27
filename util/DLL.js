@@ -1,16 +1,16 @@
-class Address {
-    constructor(x) {
-        this.info = x;
-        this.next = null;
-        this.prev = null;
-    }
-}
+const {
+    AddressDLL
+} = require("./address");
 
 class DLL {
     constructor() {
         this.first = null;
         this.last = null;
         this.length = 0;
+    }
+
+    getLast() {
+        return this.last ? this.last.info : null;
     }
 
     getFirst() {
@@ -27,6 +27,23 @@ class DLL {
             else {
                 this.first = this.first.next;
                 this.first.prev = null;
+                p.next = null;
+            }
+            this.length--;
+        }
+        return p ? p.info : null;
+    }
+
+    deleteLast() {
+        let p = this.first;
+        if(!this.isEmpty()) {
+            if(this.first === this.last) {
+                this.last = null;
+                this.first = null;
+            }
+            else {
+                this.last = this.last.prev;
+                this.last.next = null;
                 p.next = null;
             }
             this.length--;
@@ -65,8 +82,8 @@ class DLL {
         return this.first === null;
     }
 
-    insert(info) {
-        let p = new Address(info);
+    insertLast(info) {
+        let p = new AddressDLL(info);
         if(this.isEmpty()) {
             this.first = p;
             this.last = p;
@@ -79,13 +96,37 @@ class DLL {
         this.length++;
     }
 
+    insertFirst(x) {
+        let p = new AddressDLL(x);
+        if(this.isEmpty()) {
+            this.first = p;
+            this.last = p;
+        }
+        else {
+            p.next = this.first;
+            this.first.prev = p;
+            this.first = p;
+        }
+        this.length++;
+    }
+
     /**
      * 
      * @param {[]} array 
      */
-    insertMultiple(array) {
+    insertMultipleFirst(array) {
         for (let i = 0; i < array.length; i++) {
-            this.insert(array[i]);
+            this.insertFirst(array[i]);
+        }
+    }
+
+    /**
+     * 
+     * @param {[]} array 
+     */
+    insertMultipleLast(array) {
+        for (let i = 0; i < array.length; i++) {
+            this.insertLast(array[i]);
         }
     }
 

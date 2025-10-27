@@ -1,3 +1,4 @@
 module.exports = {
-    DLL: require("./DLL")
+    DLL: require("./dll"),
+    SLL: require("./sll")
 }

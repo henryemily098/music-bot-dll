@@ -124,17 +124,7 @@ module.exports.run = async(interaction) => {
     }
 
     let serverQueue = interaction.client.queue.get(interaction.guildId);
-    let queueConstruct = {
-        currentSong: null,
-        dj: interaction.user,
-        loop: false,
-        message: null,
-        playing: true,
-        prevVotes: [],
-        skipVotes: [],
-        songs: new DLL(),
-        volume: 100
-    }
+    let queueConstruct = interaction.client.createQueueConstruct(interaction.user);
 
     let player = interaction.client.players.get(interaction.guildId);
     if(!player) {
@@ -153,12 +143,12 @@ module.exports.run = async(interaction) => {
     }
 
     if(song) {
-        if(serverQueue) serverQueue.songs.insert(song);
-        else queueConstruct.songs.insert(song);
+        if(serverQueue) serverQueue.songs.insertLast(song);
+        else queueConstruct.songs.insertLast(song);
     }
     else {
-        if(serverQueue) serverQueue.songs.insertMultiple(songs);
-        else queueConstruct.songs.insertMultiple(songs);
+        if(serverQueue) serverQueue.songs.insertMultipleLast(songs);
+        else queueConstruct.songs.insertMultipleLast(songs);
     }
 
     try {

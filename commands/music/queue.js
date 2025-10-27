@@ -25,13 +25,13 @@ module.exports.run = async(interaction) => {
 
     let list = queue.songs.toArray();
     let content = "```\n";
-    content += `FIRST 5 TRACKS TO BE PLAYED IN ${interaction.guild.name}'s QUEUE\n\n`;
+    content += `DISPLAY 5 TRACKS TO BE PLAYED IN "${interaction.guild.name.toUpperCase()}" QUEUE\n\n`;
     content += `Total tracks: ${queue.songs.length}\n`;
     content += `Current DJ: ${queue.dj ? `${queue.dj.username}` : "None"}\n`;
     content += `Current Song: ${queue.currentSong ? queue.currentSong.info.title : "Unknown"}\n\n`;
     content += list.splice(0, 5).map((song, index) => {
-        if(queue.currentSong && queue.currentSong === song) `${index+1}). ${song.title} - [${song.requestedBy.username}] ⬅️`;
-        else return `${index+1}). ${song.title} - [${song.requestedBy.username}]`
+        if(queue.currentSong && queue.currentSong.info === song) return `${index+1}). ${song.title} - [${song.requestedBy.username}] ⬅️`;
+        else return `${index+1}). ${song.title} - [${song.requestedBy.username}]`;
     }).join("\n") + "\n\n";
     content += "\n";
     content += `Page: 1/${Math.ceil(queue.songs.length / 5)}\n`;
