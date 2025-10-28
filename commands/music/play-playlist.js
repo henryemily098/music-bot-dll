@@ -10,22 +10,12 @@ const {
     v4
 } = require("uuid");
 const {
-    play
-} = require("../../play");
-const {
     music
 } = require("../../util");
 const {
-    Buffer
-} = require("buffer");
-const fetch = require("node-fetch").default;;
-
-const audioUrlToBuffer = async(url) => {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    return buffer;
-}
+    play
+} = require("../../play");
+const scdl = require("soundcloud-downloader").default;
 
 /**
  * 
@@ -78,33 +68,44 @@ module.exports.run = async(interaction) => {
         return;
     }
 
+    let query = interaction.options.getString("query", true);
+    let range = interaction.options.getInteger("range", false);
+    let url = query.split(" ")[0];
+
+    if(scdl.isValidUrl(url) && !scdl.isPlaylistURL(url)) {
+        try {
+            await interaction.reply({
+                content: "You input invalid link!",
+                flags: MessageFlags.Ephemeral
+            });
+        } catch (error) {
+            console.log(error);
+        }
+        return;
+    }
+
     try {
         await interaction.deferReply();
     } catch (error) {
         console.log(error);
     }
 
-    let file = interaction.options.getAttachment("file", true);
-    if(file.contentType.split("/")[0] !== "audio") {
-        try {
-            await interaction.editReply({
-                content: "You can only input audio files!",
-            });
-        } catch (error) {
-            console.log(error);
-        }
-        return;
-    }
-    let buffer = null;
+    let playlist, songs = null;
     try {
-        buffer = await audioUrlToBuffer(file.attachment);
+        if(scdl.isPlaylistURL(url)) playlist = await scdl.getSetInfo(url);
+        else {
+            let results = await scdl.search({ query, resourceType: "playlists" });
+            playlist = results.collection[0];
+        }
     } catch (error) {
         console.log(error);
     }
-    if(!buffer) {
+
+    if(!playlist) {
         try {
-            await interaction.editReply({
-                content: "Something wrong while trying to get file's information"
+            await interaction.reply({
+                content: "There's something wrong while trying to get songs!",
+                flags: MessageFlags.Ephemeral
             });
         } catch (error) {
             console.log(error);
@@ -112,27 +113,25 @@ module.exports.run = async(interaction) => {
         return;
     }
 
-    let song = {
-        buffer,
-        queue_id: v4(),
-        requestedBy: interaction.user,
-        textChannel: interaction.channel,
-        title: file.name.split(".")[0].split("_").join(" ")
-    }
-
+    songs = playlist.tracks.map((track) => {
+        track.queue_id = v4();
+        track.requestedBy = interaction.user;
+        track.textChannel = interaction.channel;
+        return track;
+    });
     let serverQueue = interaction.client.queue.get(interaction.guildId);
     let queueConstruct = music.createQueueConstruct(interaction.user);
 
     let player = interaction.client.players.get(interaction.guildId);
     if(!player) player = music.createPlayer(interaction.guildId, interaction.client);
 
-    if(serverQueue) serverQueue.songs.insertLast(song);
-    else queueConstruct.songs.insertLast(song);
+    if(serverQueue) serverQueue.songs.insertMultipleLast(...songs);
+    else queueConstruct.songs.insertMultipleLast(...songs);
 
     try {
         let embed = new EmbedBuilder()
             .setColor("Blue")
-            .setDescription(`Added **${song.title}** to queue!`);
+            .setDescription(`Added [${playlist.track_count}](${playlist.permalink_url}) - `);
         await interaction.editReply({
             embeds: [embed]
         });
@@ -144,7 +143,7 @@ module.exports.run = async(interaction) => {
     if(!serverQueue) interaction.client.queue.set(interaction.guildId, queueConstruct);
     if(!serverQueue) {
         try {
-            if(!connection) connection = music.createConnection(interaction.client, interaction.guildId, channel.id, interaction.guild.voiceAdapterCreator);
+            if(!connection) connection = await music.createConnection(interaction.client, interaction.guildId, channel.id, interaction.guild.voiceAdapterCreator);
             await play(queueConstruct.songs.getFirst(), interaction.client, interaction.guildId);
         } catch (error) {
             console.log(error);
@@ -153,14 +152,20 @@ module.exports.run = async(interaction) => {
 }
 
 module.exports.data = {
-    name: "playfile",
-    description: "Playing music from your local file",
+    name: "play-playlist",
+    description: "Play a playlist",
     options: [
         {
-            name: "file",
-            description: "Input or drag your music file",
-            type: 11,
+            name: "query",
+            description: "Input the playlist's name.",
+            type: 3,
             required: true
+        },
+        {
+            name: "range",
+            description: "How many songs will insert to the queue (default: 10).",
+            type: 4,
+            required: false
         }
     ]
 }

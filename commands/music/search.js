@@ -138,6 +138,22 @@ module.exports.data = {
             description: "Input the title of the song",
             type: 3,
             required: true
+        },
+        {
+            name: "resource-type",
+            description: "Input resource type of tracks",
+            type: 4,
+            required: false,
+            choices: [
+                {
+                    name: "Tracks",
+                    value: 0
+                },
+                {
+                    name: "Playlists",
+                    value: 1
+                }
+            ]
         }
     ]
 }

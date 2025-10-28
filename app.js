@@ -13,23 +13,17 @@ const {
     Routes
 } = require("discord.js");
 const {
-    AudioPlayerStatus,
-    createAudioPlayer,
-    entersState,
-    getVoiceConnection,
-    joinVoiceChannel,
-    VoiceConnectionStatus
+    getVoiceConnection
 } = require("@discordjs/voice");
-const {
-    DLL
-} = require("./util");
 const {
     v4
 } = require("uuid");
 const {
-    end,
     play
 } = require("./play");
+const {
+    music
+} = require("./util");
 
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 const client = new Client({
@@ -53,26 +47,6 @@ client.search = new Collection();
 client.commands = new Collection();
 client.players = new Collection();
 client.queue = new Collection();
-
-/**
- * 
- * @param {import("discord.js").User} user 
- * @returns 
- */
-client.createQueueConstruct = (user) => {
-    return {
-        currentSong: null,
-        direction: 1,
-        dj: user,
-        loop: false,
-        message: null,
-        playing: true,
-        prevVotes: [],
-        skipVotes: [],
-        songs: new DLL(),
-        volume: 100
-    };
-}
 
 const folders = fs.readdirSync("./commands").filter(folder => !folder.includes("."));
 for(let i = 0; i < folders.length; i++) {
@@ -259,22 +233,10 @@ client.on(Events.InteractionCreate, async(interaction) => {
 
             let option = parseInt(interaction.values[0]);
             let serverQueue = client.queue.get(interaction.guildId);
-            let queueConstruct = client.createQueueConstruct(interaction.user);
+            let queueConstruct = music.createQueueConstruct(interaction.user);
 
-            let player = interaction.client.players.get(interaction.guildId);
-            if(!player) {
-                player = createAudioPlayer()
-                    .on(AudioPlayerStatus.Playing, () => {
-                        let queue = interaction.client.queue.get(interaction.guildId);
-                        if(queue) queue.playing = true;
-                    })
-                    .on(AudioPlayerStatus.Paused, () => {
-                        let queue = interaction.client.queue.get(interaction.guildId);
-                        if(queue) queue.playing = false;
-                    })
-                    .on(AudioPlayerStatus.Idle, () => end(interaction.client, interaction.guildId));
-                interaction.client.players.set(interaction.guildId, player);
-            }
+            let player = client.players.get(interaction.guildId);
+            if(!player) player = music.createPlayer(interaction.guildId, client);
 
             songs[option].queue_id = v4();
             songs[option].requestedBy = interaction.user;
@@ -302,18 +264,7 @@ client.on(Events.InteractionCreate, async(interaction) => {
             if(!serverQueue) client.queue.set(interaction.guildId, queueConstruct);
             if(!serverQueue) {
                 try {
-                    if(!connection) {
-                        connection = joinVoiceChannel({
-                            adapterCreator: interaction.guild.voiceAdapterCreator,
-                            channelId: channel.id,
-                            guildId: interaction.guildId
-                        })
-                        .on(VoiceConnectionStatus.Destroyed, () => end(interaction.client, interaction.guildId))
-                        .on(VoiceConnectionStatus.Disconnected, () => end(interaction.client, interaction.guildId));
-
-                        await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-                        connection.subscribe(player);
-                    }
+                    if(!connection) connection = music.createConnection(client, interaction.guildId, channel.id, interaction.guild.voiceAdapterCreator);
                     await play(queueConstruct.songs.getFirst(), client, interaction.guildId);
                 } catch (error) {
                     console.log(error);

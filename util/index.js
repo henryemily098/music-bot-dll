@@ -1,4 +1,4 @@
 module.exports = {
-    DLL: require("./dll"),
-    SLL: require("./sll")
+    linkedList: require("./linked-list"),
+    music: require("./music")
 }

@@ -4,8 +4,6 @@ const {
     PermissionFlagsBits
 } = require("discord.js");
 const {
-    AudioPlayerStatus,
-    createAudioPlayer,
     entersState,
     getVoiceConnection,
     joinVoiceChannel,
@@ -15,12 +13,12 @@ const {
     v4
 } = require("uuid");
 const {
+    music
+} = require("../../util");
+const {
     end,
     play
 } = require("../../play");
-const {
-    DLL
-} = require("../../util");
 const scdl = require("soundcloud-downloader").default;
 
 /**
@@ -100,7 +98,7 @@ module.exports.run = async(interaction) => {
             else song = await scdl.getInfo(url);
         }
         else {
-            let results = await scdl.search({ query });
+            let results = await scdl.search({ query, resourceType: "all" });
             song = results.collection[0];
         }
         if(song) {
@@ -124,23 +122,10 @@ module.exports.run = async(interaction) => {
     }
 
     let serverQueue = interaction.client.queue.get(interaction.guildId);
-    let queueConstruct = interaction.client.createQueueConstruct(interaction.user);
+    let queueConstruct = music.createQueueConstruct(interaction.user);
 
     let player = interaction.client.players.get(interaction.guildId);
-    if(!player) {
-        player = createAudioPlayer()
-            .on(AudioPlayerStatus.Playing, () => {
-                let queue = interaction.client.queue.get(interaction.guildId);
-                if(queue) queue.playing = true;
-            })
-            .on(AudioPlayerStatus.Paused, () => {
-                let queue = interaction.client.queue.get(interaction.guildId);
-                if(queue) queue.playing = false;
-            })
-            .on(AudioPlayerStatus.Idle, () => end(interaction.client, interaction.guildId))
-            .on("error", () => end(interaction.client, interaction.guildId));
-        interaction.client.players.set(interaction.guildId, player);
-    }
+    if(!player) player = music.createPlayer(interaction.guildId, interaction.client);
 
     if(song) {
         if(serverQueue) serverQueue.songs.insertLast(song);
@@ -170,16 +155,7 @@ module.exports.run = async(interaction) => {
     if(!serverQueue) interaction.client.queue.set(interaction.guildId, queueConstruct);
     if(!serverQueue) {
         try {
-            if(!connection) {
-                connection = joinVoiceChannel({
-                    adapterCreator: interaction.guild.voiceAdapterCreator,
-                    channelId: channel.id,
-                    guildId: interaction.guildId
-                })
-                .on(VoiceConnectionStatus.Destroyed, () => end(interaction.client, interaction.guildId));
-                await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-                connection.subscribe(player);
-            }
+            if(!connection) connection = await music.createConnection(interaction.client, interaction.guildId, channel.id, interaction.guild.voiceAdapterCreator);
             await play(queueConstruct.songs.getFirst(), interaction.client, interaction.guildId);
         } catch (error) {
             console.log(error);
