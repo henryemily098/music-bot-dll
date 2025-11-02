@@ -2,7 +2,6 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    EmbedBuilder,
     MessageFlags,
     PermissionFlagsBits,
     StringSelectMenuBuilder,
@@ -18,6 +17,19 @@ const scdl = require("soundcloud-downloader").default;
  * @param {import("discord.js").CommandInteraction} interaction 
  */
 module.exports.run = async(interaction) => {
+    let games = interaction.client.guessTheSongs.get(interaction.guildId);
+    if(games) {
+        try {
+            await interaction.reply({
+                content: "Someone is using me for guess the song.",
+                flags: MessageFlags.Ephemeral
+            });
+        } catch (error) {
+            console.log(error);
+        }
+        return;
+    } 
+
     let { channel } = interaction.member.voice;
     let connection = getVoiceConnection(interaction.guildId);
     if(!channel) {
@@ -95,7 +107,6 @@ module.exports.run = async(interaction) => {
     let select = new StringSelectMenuBuilder()
         .setCustomId("selectsong")
         .setPlaceholder("Select song!")
-        .setMaxValues(1)
         .setMaxValues(1);
     for (let i = 0; i < (songs.length > 10 ? 10 : songs.length); i++) {
         let option = new StringSelectMenuOptionBuilder()

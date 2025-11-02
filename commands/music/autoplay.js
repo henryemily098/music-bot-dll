@@ -4,7 +4,7 @@ const {
     PermissionFlagsBits
 } = require("discord.js");
 const {
-    getVoiceConnection
+    getVoiceConnection,
 } = require("@discordjs/voice");
 const {
     v4
@@ -15,6 +15,9 @@ const {
 const {
     play
 } = require("../../play");
+const {
+    autoPlayList
+} = require("../../sources");
 const scdl = require("soundcloud-downloader").default;
 
 /**
@@ -22,19 +25,6 @@ const scdl = require("soundcloud-downloader").default;
  * @param {import("discord.js").CommandInteraction} interaction 
  */
 module.exports.run = async(interaction) => {
-    let games = interaction.client.guessTheSongs.get(interaction.guildId);
-    if(games) {
-        try {
-            await interaction.reply({
-                content: "Someone is using me for guess the song.",
-                flags: MessageFlags.Ephemeral
-            });
-        } catch (error) {
-            console.log(error);
-        }
-        return;
-    } 
-
     let { channel } = interaction.member.voice;
     let connection = getVoiceConnection(interaction.guildId);
     if(!channel) {
@@ -81,44 +71,26 @@ module.exports.run = async(interaction) => {
         return;
     }
 
-    let query = interaction.options.getString("query", true);
-    let range = interaction.options.getInteger("range", false);
-    let url = query.split(" ")[0];
-
-    if(scdl.isValidUrl(url) && !scdl.isPlaylistURL(url)) {
-        try {
-            await interaction.reply({
-                content: "You input invalid link!",
-                flags: MessageFlags.Ephemeral
-            });
-        } catch (error) {
-            console.log(error);
-        }
-        return;
-    }
-
     try {
         await interaction.deferReply();
     } catch (error) {
         console.log(error);
     }
 
-    let playlist, songs = null;
+    let song = null;
     try {
-        if(scdl.isPlaylistURL(url)) playlist = await scdl.getSetInfo(url);
-        else {
-            let results = await scdl.search({ query, resourceType: "playlists" });
-            playlist = results.collection[0];
-        }
+        let index = Math.floor(Math.random()*autoPlayList.length);
+        song = await scdl.getInfo(autoPlayList[index]);
+        song.queue_id = v4();
+        song.requestedBy = interaction.user;
+        song.textChannel = interaction.channel;
     } catch (error) {
         console.log(error);
     }
-
-    if(!playlist) {
+    if(!song) {
         try {
-            await interaction.reply({
-                content: "There's something wrong while trying to get songs!",
-                flags: MessageFlags.Ephemeral
+            await interaction.editReply({
+                content: "There's something wrong while trying to fetch song's information!",
             });
         } catch (error) {
             console.log(error);
@@ -126,25 +98,23 @@ module.exports.run = async(interaction) => {
         return;
     }
 
-    songs = playlist.tracks.map((track) => {
-        track.queue_id = v4();
-        track.requestedBy = interaction.user;
-        track.textChannel = interaction.channel;
-        return track;
-    });
     let serverQueue = interaction.client.queue.get(interaction.guildId);
     let queueConstruct = music.createQueueConstruct(interaction.user);
 
     let player = interaction.client.players.get(interaction.guildId);
     if(!player) player = music.createPlayer(interaction.guildId, interaction.client);
 
-    if(serverQueue) serverQueue.songs.insertMultipleLast(...songs);
-    else queueConstruct.songs.insertMultipleLast(...songs);
+    if(serverQueue) serverQueue.songs.insertLast(song);
+    else queueConstruct.songs.insertLast(song);
 
     try {
         let embed = new EmbedBuilder()
             .setColor("Blue")
-            .setDescription(`Added [${playlist.track_count}](${playlist.permalink_url}) - `);
+            .setDescription(
+                song
+                ? `Added [${song.title}](${song.permalink_url}) - [<@${song.requestedBy.id}>]`
+                : `Added [${songs.length} songs](${playlist.permalink_url}) - [<@${songs[0].requestedBy.id}>]`
+            );
         await interaction.editReply({
             embeds: [embed]
         });
@@ -163,22 +133,7 @@ module.exports.run = async(interaction) => {
         }
     }
 }
-
 module.exports.data = {
-    name: "play-playlist",
-    description: "Play a playlist",
-    options: [
-        {
-            name: "query",
-            description: "Input the playlist's name.",
-            type: 3,
-            required: true
-        },
-        {
-            name: "range",
-            description: "How many songs will insert to the queue (default: 10).",
-            type: 4,
-            required: false
-        }
-    ]
+    name: "autoplay",
+    description: "Auto playing or adding music with the bot."
 }

@@ -4,10 +4,7 @@ const {
     PermissionFlagsBits
 } = require("discord.js");
 const {
-    entersState,
     getVoiceConnection,
-    joinVoiceChannel,
-    VoiceConnectionStatus
 } = require("@discordjs/voice");
 const {
     v4
@@ -16,7 +13,6 @@ const {
     music
 } = require("../../util");
 const {
-    end,
     play
 } = require("../../play");
 const scdl = require("soundcloud-downloader").default;
@@ -26,6 +22,19 @@ const scdl = require("soundcloud-downloader").default;
  * @param {import("discord.js").CommandInteraction} interaction 
  */
 module.exports.run = async(interaction) => {
+    let games = interaction.client.guessTheSongs.get(interaction.guildId);
+    if(games) {
+        try {
+            await interaction.reply({
+                content: "Someone is using me for guess the song.",
+                flags: MessageFlags.Ephemeral
+            });
+        } catch (error) {
+            console.log(error);
+        }
+        return;
+    } 
+
     let { channel } = interaction.member.voice;
     let connection = getVoiceConnection(interaction.guildId);
     if(!channel) {

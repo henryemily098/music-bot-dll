@@ -2,6 +2,9 @@ const {
     EmbedBuilder
 } = require("discord.js");
 const {
+    spawn
+} = require("child_process");
+const {
     createAudioResource,
     getVoiceConnection,
     StreamType
@@ -10,6 +13,76 @@ const {
     Readable
 } = require("stream");
 const scdl = require("soundcloud-downloader").default;
+
+async function createStream(song) {
+    let stream;
+    if(song.permalink_url) stream = await scdl.downloadFormat(song.permalink_url, scdl.FORMATS.MP3);
+    else stream = Readable.from(song.buffer);
+    return {
+        resource: stream,
+        type: StreamType.Arbitrary
+    };
+}
+
+/**
+ * 
+ * @param {string[]} filter 
+ */
+function createFFmpeg(filter) {
+    let ffmpeg = spawn('ffmpeg', [
+        '-loglevel', 'quiet',
+        '-i', 'pipe:0',
+        '-af', filter,
+        '-f', 's16le',
+        '-ar', '48000',
+        '-ac', '2',
+        'pipe:1'
+    ], { stdio: ['pipe', 'pipe', 'inherit'] });
+    ffmpeg.stdin.on('error', (err) => {
+        if (err.code === 'EPIPE') {
+            console.warn('[WARN] FFmpeg stdin closed early (EPIPE)');
+        } else {
+            console.error('[FFmpeg stdin error]', err);
+        }
+    });
+
+    ffmpeg.on('error', (err) => console.error('[FFmpeg spawn error]', err));
+    ffmpeg.on('close', (code) => console.log(`[FFmpeg closed] code ${code}`));
+    return ffmpeg;
+}
+
+async function audioBassBoost(song) {
+    const stream = await createStream(song);
+    const filter = [
+        "dynaudnorm=g=15",
+        "equalizer=f=100:width_type=o:width=2:g=10",
+        "equalizer=f=250:width_type=o:width=2:g=4",
+        "acompressor=threshold=-18dB:ratio=3:attack=20:release=250"
+    ].join(',');
+
+    const ffmpeg = createFFmpeg(filter);
+    stream.resource.pipe(ffmpeg.stdin);
+    return {
+        resource: ffmpeg,
+        type: StreamType.Raw
+    }
+}
+
+async function audioEightD(song) {
+    const stream = await createStream(song);
+    const filter = [
+        "dynaudnorm=g=10",
+        "apulsator=hz=0.2",
+        "aecho=0.8:0.88:60:0.4",
+        "highpass=f=100, lowpass=f=10000"
+    ].join(',');
+    const ffmpeg = createFFmpeg(filter);
+    stream.resource.pipe(ffmpeg.stdin);
+    return {
+        resource: ffmpeg,
+        type: StreamType.Raw
+    }
+}
 
 /**
  * 
@@ -28,13 +101,19 @@ module.exports.play = async(song, client, guildId) => {
 
     let stream = null;
     try {
-        if(song.permalink_url) stream = await scdl.downloadFormat(song.permalink_url, scdl.FORMATS.MP3);
-        else stream = Readable.from(song.buffer);
+        if(queue.outputType === "default") stream = await createStream(song);
+        else if(queue.outputType === "bassboost") stream = await audioBassBoost(song);
+        else if(queue.outputType === "eightd") stream = await audioEightD(song);
     } catch (error) {
         console.log(error);
     }
+    if(!stream) {
+        this.end(client, guildId);
+        return;
+    }
 
-    let resource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
+    queue.stream = stream;
+    let resource = createAudioResource(queue.outputType === "default" ? queue.stream.resource : queue.stream.resource.stdout, { inputType: stream.type, inlineVolume: true });
     resource.volume.setVolume(queue.volume / 100);
     player.play(resource);
 
@@ -56,7 +135,7 @@ module.exports.play = async(song, client, guildId) => {
 module.exports.end = async(client, guildId) => {
     let queue = client.queue.get(guildId);
     if(!queue) return;
-
+    
     queue.skipVotes = [];
     queue.prevVotes = [];
     try {

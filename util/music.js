@@ -25,10 +25,12 @@ module.exports = {
             dj: user,
             loop: false,
             message: null,
+            outputType: "default",
             playing: true,
             prevVotes: [],
             skipVotes: [],
             songs: new DLL(),
+            stream: null,
             volume: 100
         };
     },

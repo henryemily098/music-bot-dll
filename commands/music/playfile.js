@@ -32,6 +32,19 @@ const audioUrlToBuffer = async(url) => {
  * @param {import("discord.js").CommandInteraction} interaction 
  */
 module.exports.run = async(interaction) => {
+    let games = interaction.client.guessTheSongs.get(interaction.guildId);
+    if(games) {
+        try {
+            await interaction.reply({
+                content: "Someone is using me for guess the song.",
+                flags: MessageFlags.Ephemeral
+            });
+        } catch (error) {
+            console.log(error);
+        }
+        return;
+    } 
+
     let { channel } = interaction.member.voice;
     let connection = getVoiceConnection(interaction.guildId);
     if(!channel) {
