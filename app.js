@@ -33,23 +33,53 @@ const client = new Client({
 });
 
 const commands = [];
+client.lyrics = new Collection();
+client.createLyrics = new Collection();
+client.guessTheSongs = new Collection();
 client.viewQueue = new Collection();
 client.search = new Collection();
+
 client.commands = new Collection();
 client.players = new Collection();
 client.queue = new Collection();
-client.guessTheSongs = new Collection();
+
+client.convertMStoFormat = (ms) => {
+    let seconds = Math.floor(ms / 1000);
+    let hours = Math.floor((seconds / 3600));
+    let minutes = Math.floor((seconds % 3600) / 60);
+    let remainingSeconds = (seconds % 3600) % 60;
+    return (hours < 10 ? `0${hours}` : `${hours}`) + ":"
+    + (minutes < 10 ? `0${minutes}` : `${minutes}`) + ":"
+    + (remainingSeconds < 10 ? `0${remainingSeconds}` : `${remainingSeconds}`);
+}
 
 const folders = fs.readdirSync("./commands").filter(folder => !folder.includes("."));
 for(let i = 0; i < folders.length; i++) {
-    let config = require(`./commands/${folders[i]}.json`);
-    let files = fs.readdirSync(`./commands/${folders[i]}`).filter(file => file.endsWith(".js"));
+    const config = require(`./commands/${folders[i]}.json`);
+    const files = fs.readdirSync(`./commands/${folders[i]}`).filter(file => file.endsWith(".js") || file.endsWith(".json"));
     for(let j = 0; j < files.length; j++) {
-        let command = require(`./commands/${folders[i]}/${files[j]}`);
-        if(command && command.data) {
-            command.data.type = 1;
-            config.options.push(command.data);
-            client.commands.set(`${config.name}-${command.data.name}`, command);
+        if(files[j].endsWith(".js")) {
+            const command = require(`./commands/${folders[i]}/${files[j]}`);
+            if(command && command.data) {
+                command.data.type = 1;
+                config.options.push(command.data);
+                client.commands.set(`${config.name}-${command.data.name}`, command);
+            }
+        }
+        else {
+            const directory = files[j].split(".j")[0];
+            const childConfig = require(`./commands/${folders[i]}/${files[j]}`);
+            const childFiles = fs.readdirSync(`./commands/${folders[i]}/${directory}`).filter(file => file.endsWith(".js"));
+            for (let k = 0; k < childFiles.length; k++) {
+                const command = require(`./commands/${folders[i]}/${directory}/${childFiles[k]}`);
+                if(command && command.data) {
+                    command.data.type = 1;
+                    childConfig.options.push(command.data);
+                    client.commands.set(`${config.name}-${childConfig.name}-${command.data.name}`, command);
+                }
+            }
+            childConfig.type = 2;
+            config.options.push(childConfig);
         }
     }
     commands.push(config);
@@ -60,7 +90,16 @@ for(let i = 0; i < folders.length; i++) {
         await rest.put(
             Routes.applicationCommands(process.env.CLIENT_ID),
             {
-                body: commands
+                body: commands.filter((command) => command.name != "admin")
+            }
+        );
+        await rest.put(
+            Routes.applicationGuildCommands(
+                process.env.CLIENT_ID,
+                process.env.GUILD_ID
+            ),
+            {
+                body: commands.filter((command) => command.name == "admin")
             }
         );
     } catch (error) {
@@ -70,8 +109,9 @@ for(let i = 0; i < folders.length; i++) {
 
 client.on(Events.ClientReady, (readyClient) => console.log(`[SERVER] ${readyClient.user.username} it's ready to work!`));
 client.on(Events.InteractionCreate, async(interaction) => {
-    if(interaction.isCommand()) await interactionRun.commands(interaction);
     if(interaction.isButton()) await interactionRun.buttons(interaction);
+    if(interaction.isCommand()) await interactionRun.commands(interaction);
+    if(interaction.isModalSubmit()) await interactionRun.modalSubmit(interaction);
     if(interaction.isStringSelectMenu()) await interactionRun.selectString(interaction);
 });
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {

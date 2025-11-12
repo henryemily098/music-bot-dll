@@ -1,3 +1,4 @@
+const fs = require("fs");
 const {
     ActionRowBuilder,
     ButtonBuilder,
@@ -10,9 +11,6 @@ const {
     joinVoiceChannel,
     VoiceConnectionStatus
 } = require("@discordjs/voice");
-const {
-    autoPlayList
-} = require("../../sources");
 
 /**
  * 
@@ -116,6 +114,10 @@ module.exports.run = async(interaction) => {
             channelId: null
         }
     }
+    
+    const files = fs.readFileSync("./sources/autoplay-list.json", "utf8");
+    const autoPlayList = JSON.parse(files);
+
     let i = 0;
     while(i < 5) {
         let randomIndex = Math.floor(Math.random()*autoPlayList.length);

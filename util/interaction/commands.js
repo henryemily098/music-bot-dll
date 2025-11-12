@@ -7,7 +7,11 @@ const {
  * @param {import("discord.js").CommandInteraction} interaction 
  */
 module.exports = async(interaction) => {
-    const command = interaction.client.commands.get(`${interaction.commandName}-${interaction.options.getSubcommand(true)}`);
+    let commandName;
+    if(interaction.options.getSubcommandGroup(false)) commandName = `${interaction.commandName}-${interaction.options.getSubcommandGroup(true)}-${interaction.options.getSubcommand(true)}`;
+    else commandName = `${interaction.commandName}-${interaction.options.getSubcommand(true)}`;
+
+    const command = interaction.client.commands.get(commandName);
     if(!command) {
         try {
             await interaction.reply({

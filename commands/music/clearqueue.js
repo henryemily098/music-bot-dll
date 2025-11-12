@@ -39,13 +39,21 @@ module.exports.run = async(interaction) => {
         return;
     }
 
+    if(queue.message) {
+        try {
+            await queue.message.delete();
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
     interaction.client.queue.delete(interaction.guildId);
     player.stop();
-
-    let embed = new EmbedBuilder()
-        .setColor("Blue")
-        .setDescription("Clearing entire queue!");
+    
     try {
+        let embed = new EmbedBuilder()
+            .setColor("Blue")
+            .setDescription("Clearing entire queue!");
         await interaction.reply({
             embeds: [embed]
         });

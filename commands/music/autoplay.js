@@ -1,3 +1,4 @@
+const fs = require("fs");
 const {
     EmbedBuilder,
     MessageFlags,
@@ -15,9 +16,6 @@ const {
 const {
     play
 } = require("../../play");
-const {
-    autoPlayList
-} = require("../../sources");
 const scdl = require("soundcloud-downloader").default;
 
 /**
@@ -78,6 +76,8 @@ module.exports.run = async(interaction) => {
     }
 
     let song = null;
+    const files = fs.readFileSync("./sources/autoplay-list.json", "utf8");
+    const autoPlayList = JSON.parse(files);
     try {
         let index = Math.floor(Math.random()*autoPlayList.length);
         song = await scdl.getInfo(autoPlayList[index]);

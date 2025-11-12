@@ -20,6 +20,7 @@
     "libsodium-wrappers": "^0.7.15",
     "node-fetch": "^2.7.0",
     "nodemon": "^3.1.10",
+    "pm2": "^6.0.13",
     "soundcloud-downloader": "^1.0.0",
     "tweetnacl": "^1.0.3",
     "uuid": "^11.1.0"

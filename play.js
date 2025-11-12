@@ -135,6 +135,21 @@ module.exports.play = async(song, client, guildId) => {
 module.exports.end = async(client, guildId) => {
     let queue = client.queue.get(guildId);
     if(!queue) return;
+
+    let lyricKeys = Array.from(client.lyrics.keys());
+    for (let i = 0; i < lyricKeys.length; i++) {
+        let lyrics = client.lyrics.get(lyricKeys[i]);
+        try {
+            let channel = client.channels.cache.get(lyrics.message.channelId);
+            let message = await channel.messages.fetch(lyrics.message.id);
+            await message.delete();
+        } catch (error) {
+            console.log(error);
+        }
+
+        clearInterval(lyrics.interval);
+        client.lyrics.delete(lyricKeys[i]);
+    }
     
     queue.skipVotes = [];
     queue.prevVotes = [];

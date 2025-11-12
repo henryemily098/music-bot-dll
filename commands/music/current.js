@@ -5,20 +5,6 @@ const {
 
 /**
  * 
- * @param {number} ms 
- */
-const convertMStoFormat = (ms) => {
-    let seconds = Math.floor(ms / 1000);
-    let hours = Math.floor((seconds / 3600));
-    let minutes = Math.floor((seconds % 3600) / 60);
-    let remainingSeconds = (seconds % 3600) % 60;
-    return (hours < 10 ? `0${hours}` : `${hours}`) + ":"
-    + (minutes < 10 ? `0${minutes}` : `${minutes}`) + ":"
-    + (remainingSeconds < 10 ? `0${remainingSeconds}` : `${remainingSeconds}`);
-}
-
-/**
- * 
  * @param {import("discord.js").CommandInteraction} interaction 
  */
 module.exports.run = async(interaction) => {
@@ -55,7 +41,7 @@ module.exports.run = async(interaction) => {
             },
             {
                 name: "Duration",
-                value: convertMStoFormat(currentSong.duration),
+                value: interaction.client.convertMStoFormat(currentSong.duration),
                 inline: true
             }
         ])

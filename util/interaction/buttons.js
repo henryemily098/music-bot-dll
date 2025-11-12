@@ -1,9 +1,16 @@
+const fs = require("fs");
 const {
     ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
     EmbedBuilder,
+    LabelBuilder,
     MessageFlags,
+    ModalBuilder,
     StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder
+    StringSelectMenuOptionBuilder,
+    TextInputBuilder,
+    TextInputStyle
 } = require("discord.js");
 const {
     AudioPlayerStatus,
@@ -18,9 +25,6 @@ const {
 const {
     default: scdl
 } = require("soundcloud-downloader");
-const {
-    autoPlayList
-} = require("../../sources");
 
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -35,7 +39,7 @@ function shuffleArray(array) {
  * @param {import("discord.js").ButtonInteraction} interaction 
  */
 module.exports = async(interaction) => {
-    let [f, c] = interaction.customId.split("-");
+    let [f, c, l] = interaction.customId.split("-");
     if(f.toLowerCase() === "selectsong") {
         if(!interaction.client.search.has(interaction.user.id+interaction.channelId)) {
             try {
@@ -105,7 +109,7 @@ module.exports = async(interaction) => {
         content += `Current Song: ${queue.currentSong ? queue.currentSong.info.title : "Unknown"}\n\n`;
         content += list.splice(0, 5).map((song, index) => {
             if(queue.currentSong && queue.currentSong.info === song) return `${viewQueue.start+index+1}). ${song.title} - [${song.requestedBy.username}] ⬅️`;
-            else return `${viewQueue.star+index+1}). ${song.title} - [${song.requestedBy.username}]`;
+            else return `${viewQueue.start+index+1}). ${song.title} - [${song.requestedBy.username}]`;
         }).join("\n") + "\n\n";
         content += `Page: ${viewQueue.end/5}/${Math.ceil(queue.songs.length / 5)}\n`;
         content += "```";
@@ -207,13 +211,15 @@ module.exports = async(interaction) => {
                 }
                 if(!msg) return;
 
+                const files = fs.readFileSync("./sources/autoplay-list.json");
+                const autoPlayList = JSON.parse(files);
+
+                let i = 1;
+                let options = [];
                 let select = new StringSelectMenuBuilder()
                     .setCustomId("guessthesong")
                     .setPlaceholder("Guess The Song!")
                     .setMaxValues(1);
-                let options = [];
-            
-                let i = 1;
                 while(i < 5) {
                     try {
                         if(options.length) {
@@ -278,6 +284,198 @@ module.exports = async(interaction) => {
                     components: [],
                     content: null,
                     embeds: [embed]
+                });
+            } catch (error) {
+                console.log(error);
+            }
+        }
+    }
+    if(f.toLowerCase() === "lyrics") {
+        let createLyrics = interaction.client.createLyrics.get(`${interaction.guildId}-${interaction.user.id}`);
+        if(!createLyrics) {
+            try {
+                await interaction.reply({
+                    content: "This message it's not for you.",
+                    flags: MessageFlags.Ephemeral
+                });
+            } catch (error) {
+                console.log(error);
+            }
+            return;
+        }
+
+        if(c.toLowerCase() === "save" || c.toLowerCase() === "cancel") {
+            try {
+                let channel = interaction.client.channels.cache.get(createLyrics.message.channelId);
+                let message = await channel.messages.fetch(createLyrics.message.id);
+                if(message) await message.delete();
+            } catch (error) {
+                console.log(error);
+            }
+
+            if(c.toLowerCase() === "save") {
+                const files = fs.readFileSync("./sources/lyrics.json", "utf8");
+                let lyrics = JSON.parse(files);
+                lyrics[createLyrics.song.title.toLowerCase().split(" ").join("-")] = createLyrics.lyrics;
+                fs.writeFileSync("./sources/lyrics.json", JSON.stringify(lyrics, null, 2), "utf8");
+            }
+
+            interaction.client.createLyrics.delete(`${interaction.guildId}-${interaction.user.id}`);
+        }
+
+        if(c.toLowerCase() === "add") {
+            let modal = new ModalBuilder()
+                .setCustomId("lyrics-add")
+                .setTitle("New Line of Lyrics");
+            let labelText = new LabelBuilder()
+                .setLabel("Lyrics Text")
+                .setTextInputComponent(
+                    new TextInputBuilder()
+                        .setCustomId("lyrics-text")
+                        .setMaxLength(300)
+                        .setMinLength(1)
+                        .setPlaceholder("Ex: And we would love you to join us for a bite.")
+                        .setRequired(true)
+                        .setStyle(TextInputStyle.Paragraph)
+                );
+            let labelTimestamp = new LabelBuilder()
+                .setLabel("Lyrics Timestamp")
+                .setTextInputComponent(
+                    new TextInputBuilder()
+                        .setCustomId("lyrics-timestamp")
+                        .setPlaceholder("Format: HH:MM:SS, MM:SS, or just input at which seconds. Invalid format will automatically set to 0.")
+                        .setRequired(false)
+                        .setStyle(TextInputStyle.Short)
+                );
+            modal.setLabelComponents([labelText, labelTimestamp]);
+            try {
+                await interaction.showModal(modal);
+            } catch (error) {
+                console.log(error);
+            }
+        }
+
+        if(c.toLowerCase() === "remove") {
+            let embed = new EmbedBuilder().setColor("Blue");
+            if(interaction.message.id !== createLyrics.message.id) {
+                if(l.toLowerCase() === "submit" || l.toLowerCase() === "cancel") {
+                    let index = createLyrics.removed.index;
+                    createLyrics.removed = null;
+                    if(l.toLowerCase() === "submit") {
+                        let removed = createLyrics.lyrics.splice(index, 1)[0];
+                        embed.setDescription(`**Successfully removed line ${index+1} from lyrics:**\n\`\`\`${removed.text}\`\`\``);
+                    }
+                    else embed.setDescription("Cancel the removal of the line of the lyrics.");
+
+                    try {
+                        await interaction.update({
+                            components: [],
+                            embeds: [embed]
+                        });
+                    } catch (error) {
+                        console.log(error);
+                    }
+                }
+                else {
+                    if(l.toLowerCase() === "left") {
+                        if(createLyrics.removed.index === 0) createLyrics.removed.index = createLyrics.lyrics.length-1;
+                        else createLyrics.removed.index--;
+                    }
+                    else if(l.toLowerCase() === "right") {
+                        if(createLyrics.removed.index === (createLyrics.lyrics.length-1)) createLyrics.removed.index = 0;
+                        else createLyrics.removed.index++;
+                    }
+
+                    embed
+                        .setAuthor({
+                            name: `Line ${createLyrics.removed.index+1}`,
+                            iconURL: interaction.client.user.displayAvatarURL({ size: 1024 })
+                        })
+                        .setDescription(createLyrics.lyrics[createLyrics.removed.index].text);
+                    try {
+                        await interaction.update({
+                            embeds: [embed]
+                        });
+                    } catch (error) {
+                        console.log(error);
+                    }
+                }
+            }
+            else {
+                try {
+                    createLyrics.removed = {
+                        index: 0
+                    }
+                    embed
+                        .setAuthor({
+                            name: "Line 1",
+                            iconURL: interaction.client.user.displayAvatarURL({ size: 1024 })
+                        })
+                        .setDescription(createLyrics.lyrics[0].text);
+                    let row = new ActionRowBuilder()
+                        .setComponents([
+                            new ButtonBuilder()
+                                .setCustomId("lyrics-remove-submit")
+                                .setEmoji("🗑")
+                                .setLabel("Remove")
+                                .setStyle(ButtonStyle.Danger),
+                            new ButtonBuilder()
+                                .setCustomId("lyrics-remove-cancel")
+                                .setEmoji("❌")
+                                .setLabel("Cancel")
+                                .setStyle(ButtonStyle.Secondary),
+                            new ButtonBuilder()
+                                .setCustomId("lyrics-remove-left")
+                                .setEmoji("⬅️")
+                                .setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder()
+                                .setCustomId("lyrics-remove-right")
+                                .setEmoji("➡️")
+                                .setStyle(ButtonStyle.Primary)
+                        ]);
+                    await interaction.reply({
+                        components: [row],
+                        embeds: [embed],
+                        flags: MessageFlags.Ephemeral
+                    });
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+        }
+
+        if(c.toLowerCase() === "view") {
+            if(!createLyrics.lyrics.length) {
+                try {
+                    await interaction.reply({
+                        content: "Create one line first before viewing the lyrics.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                } catch (error) {
+                    console.log(error);
+                }
+                return;
+            }
+
+            let embeds = [];
+            let j = 0;
+
+            for (let i = 1; i <= Math.ceil(createLyrics.lyrics.length / 10); i++) {
+                let description = "";
+                while(j < 10*i && createLyrics.lyrics[j]) {
+                    description += `**[${interaction.client.convertMStoFormat(createLyrics.lyrics[j].start_at*1000)}]** - ${createLyrics.lyrics[j].text}\n`;
+                    j++;
+                }
+                let embed = new EmbedBuilder()
+                    .setColor("Blue")
+                    .setDescription(description);
+                embeds.push(embed);
+            }
+
+            try {
+                await interaction.reply({
+                    embeds,
+                    flags: MessageFlags.Ephemeral
                 });
             } catch (error) {
                 console.log(error);
