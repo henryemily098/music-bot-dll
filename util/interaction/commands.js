@@ -1,3 +1,4 @@
+const fs = require("fs");
 const {
     MessageFlags
 } = require("discord.js");
@@ -16,6 +17,20 @@ module.exports = async(interaction) => {
         try {
             await interaction.reply({
                 content: "The command it's no longer exist!",
+                flags: MessageFlags.Ephemeral
+            });
+        } catch (error) {
+            console.log(error);
+        }
+        return;
+    }
+
+    const file = fs.readFileSync("./sources/disabled-commands.json", "utf8");
+    const disabledCommands = JSON.parse(file);
+    if(disabledCommands.includes(commandName)) {
+        try {
+            await interaction.reply({
+                content: "This command has been disabled due to some problems.",
                 flags: MessageFlags.Ephemeral
             });
         } catch (error) {
