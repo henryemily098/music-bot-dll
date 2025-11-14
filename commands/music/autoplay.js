@@ -75,15 +75,31 @@ module.exports.run = async(interaction) => {
         console.log(error);
     }
 
+    let serverQueue = interaction.client.queue.get(interaction.guildId);
+    let queueConstruct = music.createQueueConstruct(interaction.user);
+
     let song = null;
     const files = fs.readFileSync("./sources/autoplay-list.json", "utf8");
     const autoPlayList = JSON.parse(files);
+
     try {
-        let index = Math.floor(Math.random()*autoPlayList.length);
-        song = await scdl.getInfo(autoPlayList[index]);
+        let url = autoPlayList[Math.floor(Math.random()*autoPlayList.length)];
+        if(serverQueue) {
+            let p = serverQueue.songs.first;
+            while(p != null) {
+                if(p.info.permalink_url === url) {
+                    p = serverQueue.songs.first;
+                    url = autoPlayList[Math.floor(Math.random()*autoPlayList.length)];
+                }
+                else p = p.next;
+            }
+        }
+
+        song = await scdl.getInfo(url);
         song.queue_id = v4();
         song.requestedBy = interaction.user;
         song.textChannel = interaction.channel;
+        song.type = "soundcloud";
     } catch (error) {
         console.log(error);
     }
@@ -97,9 +113,6 @@ module.exports.run = async(interaction) => {
         }
         return;
     }
-
-    let serverQueue = interaction.client.queue.get(interaction.guildId);
-    let queueConstruct = music.createQueueConstruct(interaction.user);
 
     let player = interaction.client.players.get(interaction.guildId);
     if(!player) player = music.createPlayer(interaction.guildId, interaction.client);

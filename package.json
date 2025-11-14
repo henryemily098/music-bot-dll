@@ -15,14 +15,18 @@
     "@discordjs/voice": "^0.18.0",
     "discord.js": "^14.24.0",
     "dotenv": "^17.2.1",
-    "ffmpeg-static": "^5.2.0",
     "fs": "^0.0.1-security",
     "libsodium-wrappers": "^0.7.15",
     "node-fetch": "^2.7.0",
+    "node-opus": "^0.3.3",
     "nodemon": "^3.1.10",
+    "opusscript": "^0.0.8",
+    "playwright": "^1.56.1",
     "pm2": "^6.0.13",
     "soundcloud-downloader": "^1.0.0",
     "tweetnacl": "^1.0.3",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "y2mate-dl": "^1.0.4",
+    "youtube-dl-exec": "^3.0.26"
   }
 }

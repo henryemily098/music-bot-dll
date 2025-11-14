@@ -130,7 +130,8 @@ module.exports.run = async(interaction) => {
         queue_id: v4(),
         requestedBy: interaction.user,
         textChannel: interaction.channel,
-        title: file.name.split(".")[0].split("_").join(" ")
+        title: file.name.split(".")[0].split("_").join(" "),
+        type: "file"
     }
 
     let serverQueue = interaction.client.queue.get(interaction.guildId);

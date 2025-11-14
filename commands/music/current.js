@@ -21,7 +21,7 @@ module.exports.run = async(interaction) => {
         return;
     }
 
-    let currentSong = queue.songs.getFirst();
+    let currentSong = queue.currentSong.info;
     let embed = new EmbedBuilder()
         .setColor("Blue")
         .setAuthor({
@@ -31,17 +31,12 @@ module.exports.run = async(interaction) => {
         .setFields([
             {
                 name: "Song Title",
-                value: `[${currentSong.title}](${currentSong.permalink_url})`,
+                value: currentSong.type === "file" ? currentSong.title : `[${currentSong.title}](${currentSong.type === "youtube" ? currentSong.videoDetails.video_url : currentSong.permalink_url})`,
                 inline: true
             },
             {
                 name: "Artist",
                 value: (currentSong.user && currentSong.user.username) || "Unknown",
-                inline: true
-            },
-            {
-                name: "Duration",
-                value: interaction.client.convertMStoFormat(currentSong.duration),
                 inline: true
             }
         ])
@@ -51,6 +46,13 @@ module.exports.run = async(interaction) => {
         .setFooter({
             text: `Requested by ${currentSong.requestedBy.username}`,
         });
+    if(currentSong.type !== "file") embed.addFields(
+        {
+            name: "Duration",
+            value: interaction.client.convertMStoFormat(currentSong.duration),
+            inline: true
+        }
+    );
     try {
         await interaction.reply({
             embeds: [embed]

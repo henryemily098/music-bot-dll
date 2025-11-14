@@ -11,15 +11,17 @@ const {
 } = require("@discordjs/voice");
 const {
     Readable
-} = require("stream");
+} = require("stream"); 
+const youtubedl = require("youtube-dl-exec").exec;
 const scdl = require("soundcloud-downloader").default;
 
 async function createStream(song) {
     let stream;
-    if(song.permalink_url) stream = await scdl.downloadFormat(song.permalink_url, scdl.FORMATS.MP3);
-    else stream = Readable.from(song.buffer);
+    if(song.type === "file") stream = Readable.from(song.buffer);
+    else if(song.type === "youtube") stream = youtubedl(song.permalink_url, { format: "bestaudio", output: "-" });
+    else stream = await scdl.downloadFormat(song.permalink_url, scdl.FORMATS.MP3);
     return {
-        resource: stream,
+        resource: song.type === "youtube" ? stream.stdout : stream,
         type: StreamType.Arbitrary
     };
 }
@@ -120,7 +122,7 @@ module.exports.play = async(song, client, guildId) => {
     try {
         let embed = new EmbedBuilder()
             .setColor("Blue")
-            .setDescription(`Now Playing ${song.permalink_url ? `[${song.title}](${song.permalink_url})` : `**${song.title}**`} - [<@${song.requestedBy.id}>]`);
+            .setDescription(`Now Playing ${song.type === "file" ? `**${song.title}**` : `[${song.title}](${song.permalink_url})`} - [<@${song.requestedBy.id}>]`);
         queue.message = await song.textChannel.send({ embeds: [embed] });
     } catch (error) {
         console.log(error);

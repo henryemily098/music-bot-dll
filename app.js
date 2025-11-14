@@ -1,6 +1,7 @@
 require("dotenv").config();
 const fs = require("fs");
 const {
+    ActivityType,
     Client,
     Collection,
     Events,
@@ -106,7 +107,14 @@ for(let i = 0; i < folders.length; i++) {
     }
 })();
 
-client.on(Events.ClientReady, (readyClient) => console.log(`[SERVER] ${readyClient.user.username} it's ready to work!`));
+client.on(Events.ClientReady, (readyClient) => {
+    console.log(`[SERVER] ${readyClient.user.username} it's ready to work!`);
+    client.user.setActivity({
+        name: "Creator's Twitch",
+        type: ActivityType.Streaming,
+        url: "https://www.twitch.tv/henry_emily098"
+    });
+});
 client.on(Events.InteractionCreate, async(interaction) => {
     if(interaction.isButton()) await interactionRun.buttons(interaction);
     if(interaction.isCommand()) await interactionRun.commands(interaction);

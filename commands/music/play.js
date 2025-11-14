@@ -15,7 +15,19 @@ const {
 const {
     play
 } = require("../../play");
+const fetch = require("node-fetch").default;
 const scdl = require("soundcloud-downloader").default;
+
+function getYouTubeID(url) {
+    const regExp = /(?:v=|\/)([0-9A-Za-z_-]{11})/;
+    const match = url.match(regExp);
+    return match ? match[1] : null;
+}
+
+function isYouTubeVideo(url) {
+    const reg = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)[A-Za-z0-9_-]{11}/;
+    return reg.test(url);
+}
 
 /**
  * 
@@ -100,15 +112,25 @@ module.exports.run = async(interaction) => {
                     track.queue_id = v4();
                     track.requestedBy = interaction.user;
                     track.textChannel = interaction.channel;
+                    track.type = "soundcloud";
                     return track;
                 });
                 songs.push(...tracks);
             }
             else song = await scdl.getInfo(url);
+            song["type"] = "soundcloud";
+        }
+        else if(isYouTubeVideo(url)) {
+            let response = await fetch(`https://www.youtube.com/oembed?url=${url}&format=json`);
+            song = await response.json();
+            song["id"] = getYouTubeID(url);
+            song["permalink_url"] = `https://youtube.com/watch?v=${getYouTubeID(url)}`;
+            song["type"] = "youtube";
         }
         else {
-            let results = await scdl.search({ query, resourceType: "all" });
+            let results = await scdl.search({ query, resourceType: "tracks" });
             song = results.collection[0];
+            song["type"] = "soundcloud";
         }
         if(song) {
             song.queue_id = v4();
