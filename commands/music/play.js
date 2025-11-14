@@ -142,7 +142,7 @@ module.exports.run = async(interaction) => {
     }
     if(!song && (!songs || !songs.length)) {
         try {
-            await interaction.reply({
+            await interaction.editReply({
                 content: "There's something wrong while trying to get songs!",
                 flags: MessageFlags.Ephemeral
             });
