@@ -15,6 +15,7 @@
     "@discordjs/voice": "^0.18.0",
     "discord.js": "^14.24.0",
     "dotenv": "^17.2.1",
+    "ffmpeg-static": "^5.2.0",
     "fs": "^0.0.1-security",
     "libsodium-wrappers": "^0.7.15",
     "node-fetch": "^2.7.0",
