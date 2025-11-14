@@ -18,7 +18,12 @@ const scdl = require("soundcloud-downloader").default;
 async function createStream(song) {
     let stream;
     if(song.type === "file") stream = Readable.from(song.buffer);
-    else if(song.type === "youtube") stream = youtubedl(song.permalink_url, { format: "bestaudio", output: "-" });
+    else if(song.type === "youtube") stream = youtubedl(song.permalink_url, {
+        format: "bestaudio",
+        output: "-",
+        cookies: "./cookies.txt",
+        extractorArgs: "youtube:player_client=default"
+    });
     else stream = await scdl.downloadFormat(song.permalink_url, scdl.FORMATS.MP3);
     return {
         resource: song.type === "youtube" ? stream.stdout : stream,
