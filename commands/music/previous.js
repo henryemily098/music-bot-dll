@@ -1,6 +1,7 @@
 const {
     EmbedBuilder,
-    MessageFlags
+    MessageFlags,
+    PermissionFlagsBits
 } = require("discord.js");
 const {
     getVoiceConnection
@@ -14,6 +15,7 @@ module.exports.run = async(interaction) => {
     let { channel } = interaction.member.voice;
     let player = interaction.client.players.get(interaction.guildId);
     let connection = getVoiceConnection(interaction.guildId);
+    let guild = interaction.client.guilds.cache.get(interaction.guildId);
     let queue = interaction.client.queue.get(interaction.guildId);
     if(!queue) {
         try {
@@ -39,9 +41,15 @@ module.exports.run = async(interaction) => {
         return;
     }
 
+    let confirm = false;
+    let member = guild.members.cache.get(interaction.user.id);
+    if(member.user.id === queue.dj?.id) confirm = true;
+    if(member.permissions.has(PermissionFlagsBits.Administrator)) confirm = true;
+    if(member.permissions.has(PermissionFlagsBits.ManageGuild)) confirm = true;
+
     let embed = new EmbedBuilder().setColor("Blue");
     let members = channel.members.filter(m => !m.user.bot);
-    if(interaction.user.id === queue.dj.id) queue.prevVotes.push(...members.map(m => m.id));
+    if(confirm) queue.prevVotes.push(...members.map(m => m.id));
     else {
         if(queue.dj.prevVotes.includes(interaction.user.id))
         try {

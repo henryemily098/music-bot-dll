@@ -3,3 +3,6 @@ cookies.txt
 env.txt
 node_modules
 package-lock.json
+
+commands/music/playlist.json
+commands/music/playlist/*.js

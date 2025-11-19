@@ -22,12 +22,9 @@
     "node-opus": "^0.3.3",
     "nodemon": "^3.1.10",
     "opusscript": "^0.0.8",
-    "playwright": "^1.56.1",
     "pm2": "^6.0.13",
     "soundcloud-downloader": "^1.0.0",
     "tweetnacl": "^1.0.3",
-    "uuid": "^11.1.0",
-    "y2mate-dl": "^1.0.4",
-    "youtube-dl-exec": "^3.0.26"
+    "uuid": "^11.1.0"
   }
 }

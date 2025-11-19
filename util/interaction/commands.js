@@ -9,7 +9,7 @@ const {
  */
 module.exports = async(interaction) => {
     let commandName;
-    if(interaction.options.getSubcommandGroup(false)) commandName = `${interaction.commandName}-${interaction.options.getSubcommandGroup(true)}-${interaction.options.getSubcommand(true)}`;
+    if(interaction.options.getSubcommandGroup(false)) commandName = `${interaction.commandName}-${interaction.options.getSubcommandGroup(false)}-${interaction.options.getSubcommand(true)}`;
     else commandName = `${interaction.commandName}-${interaction.options.getSubcommand(true)}`;
 
     const command = interaction.client.commands.get(commandName);
