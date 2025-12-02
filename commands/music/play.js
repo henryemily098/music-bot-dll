@@ -143,7 +143,7 @@ module.exports.run = async(interaction) => {
             song["queue_id"] = id;
             song["path"] = `./download/${videoId}.mp3`;
             song["id"] = videoId;
-            song["url"] = `https://youtube.com/watch?v=${url}`;
+            song["url"] = `https://youtube.com/watch?v=${videoId}`;
             song["type"] = "youtube";
         }
         else {
