@@ -1,8 +1,8 @@
-cookies.txt
 .env
 env.txt
 node_modules
 package-lock.json
+cookies.txt
 
-commands/music/playlist.json
 commands/music/playlist/*.js
+commands/music/playlist.json

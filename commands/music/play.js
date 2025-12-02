@@ -15,7 +15,22 @@ const {
 const {
     play
 } = require("../../play");
+const fs = require("fs");
+const path = require("path");
+const fetch = require("node-fetch").default;
 const scdl = require("soundcloud-downloader").default;
+const youtubedl = require("yt-dlp-exec").exec;
+
+/**
+ * 
+ * @param {string} url 
+ * @returns 
+ */
+const getYouTubeId = (url) => {
+  const pattern = /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/;
+  const match = url.match(pattern);
+  return match ? match[1] : null;
+}
 
 /**
  * 
@@ -87,6 +102,7 @@ module.exports.run = async(interaction) => {
         console.log(error);
     }
 
+    let youtubeRegex = /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&].*)?$/i;
     let query = interaction.options.getString("query", true);
     let url = query.split(" ")[0];
 
@@ -108,13 +124,35 @@ module.exports.run = async(interaction) => {
             else song = await scdl.getInfo(url);
             song["type"] = "soundcloud";
         }
+        else if(youtubeRegex.test(url)) {
+            let response = await fetch(`https://www.youtube.com/oembed?format=json&url=${url}`);
+            song = await response.json();
+
+            let id = v4();
+            let videoId = getYouTubeId(url);
+
+            if(!fs.existsSync(`./download/${videoId}.mp3`)) await youtubedl(url, {
+                audioFormat: "mp3",
+                audioQuality: "0",
+                cookies: interaction.client.cookiesPath,
+                extractAudio: true,
+                noPart: true,
+                output: interaction.client.outputPath(videoId)
+            });
+
+            song["queue_id"] = id;
+            song["path"] = `./download/${videoId}.mp3`;
+            song["id"] = videoId;
+            song["url"] = `https://youtube.com/watch?v=${url}`;
+            song["type"] = "youtube";
+        }
         else {
             let results = await scdl.search({ query, resourceType: "tracks" });
             song = results.collection[0];
             song["type"] = "soundcloud";
+            song.queue_id = v4();
         }
         if(song) {
-            song.queue_id = v4();
             song.requestedBy = interaction.user;
             song.textChannel = interaction.channel;
         }
@@ -153,7 +191,7 @@ module.exports.run = async(interaction) => {
             .setColor("Blue")
             .setDescription(
                 song
-                ? `Added [${song.title}](${song.permalink_url}) - [<@${song.requestedBy.id}>]`
+                ? `Added [${song.title}](${song.type === "youtube" ? song.url : song.permalink_url}) - [<@${song.requestedBy.id}>]`
                 : `Added [${songs.length} songs](${playlist.permalink_url}) - [<@${songs[0].requestedBy.id}>]`
             );
         await interaction.editReply({

@@ -12,14 +12,16 @@ const {
 const {
     Readable
 } = require("stream"); 
+const fs = require("fs");
 const scdl = require("soundcloud-downloader").default;
 
 async function createStream(song) {
     let stream;
     if(song.type === "file") stream = Readable.from(song.buffer);
+    if(song.type === "youtube") stream = fs.createReadStream(song.path);
     else stream = await scdl.downloadFormat(song.permalink_url, scdl.FORMATS.MP3);
     return {
-        resource: song.type === "youtube" ? stream.stdout : stream,
+        resource: stream,
         type: StreamType.Arbitrary
     };
 }
@@ -120,7 +122,12 @@ module.exports.play = async(song, client, guildId) => {
     try {
         let embed = new EmbedBuilder()
             .setColor("Blue")
-            .setDescription(`Now Playing ${song.type === "file" ? `**${song.title}**` : `[${song.title}](${song.permalink_url})`} - [<@${song.requestedBy.id}>]`);
+            .setDescription(
+                `Now Playing ${
+                    song.type === "file"
+                    ? `**${song.title}**`
+                    : `[${song.title}](${song.type === "soundcloud" ? song.permalink_url : song.url})`
+                } - [<@${song.requestedBy.id}>]`);
         queue.message = await song.textChannel.send({ embeds: [embed] });
     } catch (error) {
         console.log(error);

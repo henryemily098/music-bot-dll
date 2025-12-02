@@ -1,5 +1,6 @@
 require("dotenv").config();
 const fs = require("fs");
+const path = require("path");
 const {
     ActivityType,
     Client,
@@ -42,6 +43,11 @@ client.search = new Collection();
 client.commands = new Collection();
 client.players = new Collection();
 client.queue = new Collection();
+
+client.cookiesPath = path.join(__dirname, "sources", "cookies.txt");
+client.outputPath = (id) => {
+    return path.join(__dirname, "download", `${id}.%(ext)s`);
+}
 
 client.convertMStoFormat = (ms) => {
     let seconds = Math.floor(ms / 1000);
@@ -107,6 +113,15 @@ for(let i = 0; i < folders.length; i++) {
     }
 })();
 
+const musicFiles = fs.readdirSync("./download").filter(file => file.endsWith(".mp3"));
+for (let i = 0; i < musicFiles.length; i++) {
+    try {
+        fs.unlinkSync(`./download/${musicFiles[i]}`);
+    } catch (error) {
+        console.log(error);
+    }
+}
+
 client.on(Events.ClientReady, (readyClient) => {
     console.log(`[SERVER] ${readyClient.user.username} it's ready to work!`);
     client.user.setActivity({
@@ -153,4 +168,4 @@ client.on(Events.VoiceStateUpdate, (oldState, newState) => {
         }
     }
 });
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN); 
