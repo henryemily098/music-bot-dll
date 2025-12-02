@@ -16,7 +16,6 @@ const {
     play
 } = require("../../play");
 const fs = require("fs");
-const path = require("path");
 const fetch = require("node-fetch").default;
 const scdl = require("soundcloud-downloader").default;
 const youtubedl = require("yt-dlp-exec").exec;
@@ -27,9 +26,9 @@ const youtubedl = require("yt-dlp-exec").exec;
  * @returns 
  */
 const getYouTubeId = (url) => {
-  const pattern = /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/;
-  const match = url.match(pattern);
-  return match ? match[1] : null;
+    const pattern = /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/;
+    const match = url.match(pattern);
+    return match ? match[1] : null;
 }
 
 /**
@@ -131,14 +130,30 @@ module.exports.run = async(interaction) => {
             let id = v4();
             let videoId = getYouTubeId(url);
 
-            if(!fs.existsSync(`./download/${videoId}.mp3`)) await youtubedl(url, {
-                audioFormat: "mp3",
-                audioQuality: "0",
-                cookies: interaction.client.cookiesPath,
-                extractAudio: true,
-                noPart: true,
-                output: interaction.client.outputPath(videoId)
-            });
+            if(!fs.existsSync(`./download/${videoId}.mp3`)) {
+                let files = fs.readdirSync("./download").filter(file => file.endsWith(".mp3"));
+                let channel = interaction.guild.channels.cache.get("1109795504063266887");
+                await youtubedl(url, {
+                    audioFormat: "mp3",
+                    audioQuality: "0",
+                    cookies: interaction.client.cookiesPath,
+                    extractAudio: true,
+                    noPart: true,
+                    output: interaction.client.outputPath(videoId)
+                });
+                if(channel && channel.isTextBased() && channel.isSendable()) {
+                    let embed = new EmbedBuilder()
+                        .setColor("Blue")
+                        .setAuthor({
+                            name: "Downloaded A New Song!",
+                            iconURL: interaction.client.user.displayAvatarURL({ size: 1024 })
+                        })
+                        .setTitle(song.title)
+                        .setURL(`https://youtube.com/watch?v=${videoId}`)
+                        .setDescription(`**All Downloaded Files**\n${files.join(", ")}`);
+                    await channel.send({ embeds: [embed] });
+                }
+            }
 
             song["queue_id"] = id;
             song["path"] = `./download/${videoId}.mp3`;
